@@ -88,10 +88,9 @@ public class TestDurationFailureCondition extends BuildFeature {
           if (settings.isSlow(referenceDuration, duration)) {
             int slowdown = (int) ((duration - referenceDuration) * 100.0 / referenceDuration);
             TestSlowdownInfo info = new TestSlowdownInfo(run.getTestRunId(), duration, referenceRun.getTestRunId(), referenceDuration, referenceBuild.getBuildId());
-            build.addBuildProblem(BuildProblemData.createBuildProblem("testDurationFailureCondition." + run.getTestRunId(), PROBLEM_TYPE,
-                    "Test test '" + name + "' became " + slowdown + "% slower" +
-                            ", old duration: " + referenceDuration + "ms" +
-                            ", new duration: " + duration + "ms",
+            build.addBuildProblem(BuildProblemData.createBuildProblem("testDurationFailureCondition." + run.getTestRunId(),
+                    PROBLEM_TYPE,
+                    "Test test '" + name + "' became " + slowdown + "% slower",
                     info.asString()));
           }
         }
