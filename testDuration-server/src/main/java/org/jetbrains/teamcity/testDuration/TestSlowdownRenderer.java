@@ -1,7 +1,6 @@
 package org.jetbrains.teamcity.testDuration;
 
-import jetbrains.buildServer.serverSide.SBuild;
-import jetbrains.buildServer.serverSide.SBuildServer;
+import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.problems.BuildProblem;
 import jetbrains.buildServer.web.openapi.PluginDescriptor;
 import jetbrains.buildServer.web.openapi.WebControllerManager;
@@ -32,6 +31,10 @@ public class TestSlowdownRenderer extends BuildResultsBuildProblemRendererCopy {
       model.put("testSlowdownInfo", info);
       SBuild referenceBuild = myServer.findBuildInstanceById(info.getEtalonBuildId());
       model.put("referenceBuild", referenceBuild);
+      BuildStatistics stat = build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
+      STestRun run = stat.findTestByTestRunId(info.getCurrentTestRunId());
+      if (run != null)
+        model.put("slowTest", run.getTest());
     } catch (IllegalArgumentException e) {
       return;
     }
