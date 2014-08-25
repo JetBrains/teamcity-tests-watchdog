@@ -73,15 +73,17 @@ public class TestDurationFailureCondition extends BuildFeature {
         continue;
 
       List<STestRun> etalonTestRuns = etalonStat.findTestsBy(testName);
+      int duration = run.getDuration();
       for (STestRun etalonRun : etalonTestRuns) {
-        int duration = run.getDuration();
         int etalonDuration = etalonRun.getDuration();
         if (settings.isSlow(etalonDuration, duration)) {
           int slowdown = (int) ((duration - etalonDuration) * 100.0 / etalonDuration);
+          TestSlowdownInfo info = new TestSlowdownInfo(run.getTestRunId(), duration, etalonRun.getTestRunId(), etalonDuration, etalon.getBuildId());
           build.addBuildProblem(BuildProblemData.createBuildProblem("testDurationFailureCondition." + run.getTestRunId(), "testDurationFailureCondition",
                   "Test test '" + name + "' became " + slowdown + "% slower" +
                           ", old duration: " + etalonDuration + "ms" +
-                          ", new duration: " + duration + "ms"));
+                          ", new duration: " + duration + "ms",
+                  info.asString()));
         }
       }
     }
