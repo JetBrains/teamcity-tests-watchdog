@@ -57,7 +57,7 @@ public class TestSlowdownInfo {
 
   @NotNull
   public static TestSlowdownInfo fromString(@NotNull String s) {
-    List<String> segments = StringUtil.split(",");
+    List<String> segments = StringUtil.split(s, ",");
     if (segments.size() < 5)
       throw new IllegalArgumentException("Wrong data format: " + s);
     try {

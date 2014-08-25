@@ -8,10 +8,7 @@ import jetbrains.buildServer.vcs.SelectPrevBuildPolicy;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.util.Util.map;
@@ -19,6 +16,13 @@ import static jetbrains.buildServer.util.Util.map;
 public class TestDurationFailureCondition extends BuildFeature {
 
   public static final String TYPE = "BuildFailureOnSlowTest";
+  public static final String PROBLEM_TYPE = "testDurationFailureCondition";
+
+  private final BuildHistory myBuildHistory;
+
+  public TestDurationFailureCondition(@NotNull BuildHistory buildHistory) {
+    myBuildHistory = buildHistory;
+  }
 
   @NotNull
   @Override
@@ -62,6 +66,7 @@ public class TestDurationFailureCondition extends BuildFeature {
   private void compareTestDurations(@NotNull FailureConditionSettings settings, @NotNull SBuild etalon, @NotNull SRunningBuild build) {
     BuildStatistics etalonStat = etalon.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
     BuildStatistics stat = build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
+    List<SFinishedBuild> referenceBuilds = getBuildsBetween(etalon, build);
     Set<String> processedTests = new HashSet<String>();
     for (STestRun run : stat.getPassedTests()) {
       TestName testName = run.getTest().getName();
@@ -72,21 +77,51 @@ public class TestDurationFailureCondition extends BuildFeature {
       if (!processedTests.add(name))
         continue;
 
-      List<STestRun> etalonTestRuns = etalonStat.findTestsBy(testName);
       int duration = run.getDuration();
-      for (STestRun etalonRun : etalonTestRuns) {
-        int etalonDuration = etalonRun.getDuration();
-        if (settings.isSlow(etalonDuration, duration)) {
-          int slowdown = (int) ((duration - etalonDuration) * 100.0 / etalonDuration);
-          TestSlowdownInfo info = new TestSlowdownInfo(run.getTestRunId(), duration, etalonRun.getTestRunId(), etalonDuration, etalon.getBuildId());
-          build.addBuildProblem(BuildProblemData.createBuildProblem("testDurationFailureCondition." + run.getTestRunId(), "testDurationFailureCondition",
-                  "Test test '" + name + "' became " + slowdown + "% slower" +
-                          ", old duration: " + etalonDuration + "ms" +
-                          ", new duration: " + duration + "ms",
-                  info.asString()));
+      for (SFinishedBuild referenceBuild : referenceBuilds) {
+        BuildStatistics referenceStat = getBuildStat(referenceBuild, etalon, etalonStat);
+        List<STestRun> referenceTestRuns = referenceStat.findTestsBy(testName);
+        if (referenceTestRuns.isEmpty())
+          continue;
+        for (STestRun referenceRun : referenceTestRuns) {
+          int referenceDuration = referenceRun.getDuration();
+          if (settings.isSlow(referenceDuration, duration)) {
+            int slowdown = (int) ((duration - referenceDuration) * 100.0 / referenceDuration);
+            TestSlowdownInfo info = new TestSlowdownInfo(run.getTestRunId(), duration, referenceRun.getTestRunId(), referenceDuration, referenceBuild.getBuildId());
+            build.addBuildProblem(BuildProblemData.createBuildProblem("testDurationFailureCondition." + run.getTestRunId(), PROBLEM_TYPE,
+                    "Test test '" + name + "' became " + slowdown + "% slower" +
+                            ", old duration: " + referenceDuration + "ms" +
+                            ", new duration: " + duration + "ms",
+                    info.asString()));
+          }
         }
+        break;
       }
     }
+  }
+
+
+  @NotNull
+  private BuildStatistics getBuildStat(@NotNull SBuild build, @NotNull SBuild etalonBuild, @NotNull BuildStatistics etalonStat) {
+    if (build.equals(etalonBuild))
+      return etalonStat;
+    return build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
+  }
+
+
+  @NotNull
+  private List<SFinishedBuild> getBuildsBetween(@NotNull SBuild b1, @NotNull SBuild b2) {
+    List<SFinishedBuild> builds = myBuildHistory.getEntriesSince(b1, b1.getBuildType());
+    if (builds.isEmpty())
+      return builds;
+    List<SFinishedBuild> result = new ArrayList<SFinishedBuild>();
+    for (SFinishedBuild b : builds) {
+      if (b.equals(b2))
+        break;
+      result.add(b);
+    }
+    Collections.reverse(result);
+    return result;
   }
 
 
