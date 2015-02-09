@@ -67,8 +67,17 @@ public class TestDurationFailureCondition extends BuildFeature {
     BuildStatistics etalonStat = etalon.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
     BuildStatistics stat = build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
     List<SFinishedBuild> referenceBuilds = getBuildsBetween(etalon, build);
+    processTests(settings, etalon, etalonStat, build, stat, referenceBuilds);
+  }
+
+  private void processTests(@NotNull FailureConditionSettings settings,
+                            @NotNull SBuild etalon,
+                            @NotNull BuildStatistics etalonStat,
+                            @NotNull SRunningBuild build,
+                            @NotNull BuildStatistics buildStat,
+                            @NotNull List<SFinishedBuild> referenceBuilds) {
     Set<String> processedTests = new HashSet<String>();
-    for (STestRun run : stat.getPassedTests()) {
+    for (STestRun run : buildStat.getPassedTests()) {
       TestName testName = run.getTest().getName();
       String name = testName.getAsString();
       if (!settings.isInteresting(name))
@@ -81,8 +90,7 @@ public class TestDurationFailureCondition extends BuildFeature {
       for (SFinishedBuild referenceBuild : referenceBuilds) {
         BuildStatistics referenceStat = getBuildStat(referenceBuild, etalon, etalonStat);
         List<STestRun> referenceTestRuns = referenceStat.findTestsBy(testName);
-        if (referenceTestRuns.isEmpty())
-          continue;
+        boolean failFound = false;
         for (STestRun referenceRun : referenceTestRuns) {
           int referenceDuration = referenceRun.getDuration();
           if (settings.isSlow(referenceDuration, duration)) {
@@ -94,7 +102,8 @@ public class TestDurationFailureCondition extends BuildFeature {
                     info.asString()));
           }
         }
-        break;
+        if (failFound)
+          break;
       }
     }
   }
