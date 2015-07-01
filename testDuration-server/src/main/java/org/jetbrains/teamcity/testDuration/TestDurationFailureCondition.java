@@ -92,6 +92,8 @@ public class TestDurationFailureCondition extends BuildFeature {
         List<STestRun> referenceTestRuns = referenceStat.findTestsBy(testName);
         boolean failFound = false;
         for (STestRun referenceRun : referenceTestRuns) {
+          if (referenceRun.isIgnored() || referenceRun.isMuted())
+            continue;
           int referenceDuration = referenceRun.getDuration();
           if (settings.isSlow(referenceDuration, duration)) {
             int slowdown = (int) ((duration - referenceDuration) * 100.0 / referenceDuration);
