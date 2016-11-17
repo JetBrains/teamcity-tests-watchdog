@@ -11,15 +11,9 @@ public class FinishBuildListener extends BuildServerAdapter {
   }
 
   @Override
-  public void beforeBuildFinish(SRunningBuild build) {
-    SBuildType buildType = build.getBuildType();
-    if (buildType == null)
-      return;
-
-    for (SBuildFeatureDescriptor buildFeature : buildType.getResolvedSettings().getBuildFeatures()) {
-      if (TestDurationFailureCondition.TYPE.equals(buildFeature.getType()))
-        ((TestDurationFailureCondition) buildFeature.getBuildFeature()).checkBuild(buildType, build);
+  public void beforeBuildFinish(@NotNull SRunningBuild build) {
+    for (SBuildFeatureDescriptor buildFeature : build.getBuildFeaturesOfType(TestDurationFailureCondition.TYPE)) {
+      ((TestDurationFailureCondition) buildFeature.getBuildFeature()).checkBuild(build);
     }
   }
-
 }

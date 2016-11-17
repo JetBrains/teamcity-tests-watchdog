@@ -48,15 +48,15 @@ public class TestDurationFailureCondition extends BuildFeature {
   }
 
 
-  public void checkBuild(@NotNull SBuildType buildType, @NotNull SRunningBuild build) {
-    SBuild etalon = getEtalonBuild(buildType, build);
+  public void checkBuild(@NotNull SRunningBuild build) {
+    SBuild etalon = getEtalonBuild(build);
     if (etalon == null)
       return;
     compareTestDurations(getSettings(build), etalon, build);
   }
 
   @Nullable
-  private SBuild getEtalonBuild(@NotNull SBuildType buildType, @NotNull SRunningBuild build) {
+  private SBuild getEtalonBuild(@NotNull SRunningBuild build) {
     BuildPromotion p = build.getBuildPromotion().getPreviousBuildPromotion(SelectPrevBuildPolicy.SINCE_LAST_SUCCESSFULLY_FINISHED_BUILD);
     if (p == null)
       return null;
