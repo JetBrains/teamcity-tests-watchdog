@@ -12,8 +12,8 @@ public class FinishBuildListener extends BuildServerAdapter {
 
   @Override
   public void beforeBuildFinish(@NotNull SRunningBuild build) {
-    for (SBuildFeatureDescriptor buildFeature : build.getBuildFeaturesOfType(TestDurationFailureCondition.TYPE)) {
-      ((TestDurationFailureCondition) buildFeature.getBuildFeature()).checkBuild(build);
+    for (SBuildFeatureDescriptor descriptor : build.getBuildFeaturesOfType(TestDurationFailureCondition.TYPE)) {
+      ((TestDurationFailureCondition) descriptor.getBuildFeature()).checkBuild(build, descriptor);
     }
   }
 }

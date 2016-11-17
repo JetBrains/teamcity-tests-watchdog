@@ -1,27 +1,31 @@
 package org.jetbrains.teamcity.testDuration;
 
 import jetbrains.buildServer.BuildProblemData;
-import jetbrains.buildServer.parameters.ValueResolver;
 import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.tests.TestName;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.SelectPrevBuildPolicy;
+import jetbrains.buildServer.web.openapi.PluginDescriptor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.regex.Pattern;
 
-import static jetbrains.buildServer.util.Util.map;
-
 public class TestDurationFailureCondition extends BuildFeature {
 
   public static final String TYPE = "BuildFailureOnSlowTest";
   public static final String PROBLEM_TYPE = "testDurationFailureCondition";
+  public static final String TEST_NAMES_PATTERNS_PARAM = "testNamesPatterns";
+  public static final String MIN_DURATION_PARAM = "minDuration";
+  public static final String THRESHOLD_PARAM = "threshold";
 
   private final BuildHistory myBuildHistory;
+  private final PluginDescriptor myPluginDescriptor;
 
-  public TestDurationFailureCondition(@NotNull BuildHistory buildHistory) {
+  public TestDurationFailureCondition(@NotNull BuildHistory buildHistory, @NotNull PluginDescriptor pluginDescriptor) {
     myBuildHistory = buildHistory;
+    myPluginDescriptor = pluginDescriptor;
   }
 
   @NotNull
@@ -33,13 +37,13 @@ public class TestDurationFailureCondition extends BuildFeature {
   @NotNull
   @Override
   public String getDisplayName() {
-    return "Fail build when test is slow";
+    return "Fail build if tests duration increases";
   }
 
   @Nullable
   @Override
   public String getEditParametersUrl() {
-    return null;
+    return myPluginDescriptor.getPluginResourcesPath("editFeatureParams.jsp");
   }
 
   @Override
@@ -47,12 +51,64 @@ public class TestDurationFailureCondition extends BuildFeature {
     return PlaceToShow.FAILURE_REASON;
   }
 
+  @Nullable
+  @Override
+  public Map<String, String> getDefaultParameters() {
+    return new HashMap<String, String>() {{
+      put(TEST_NAMES_PATTERNS_PARAM, ".*");
+      put(MIN_DURATION_PARAM, "1000");
+      put(THRESHOLD_PARAM, "80");
+    }};
+  }
 
-  public void checkBuild(@NotNull SRunningBuild build) {
+  @Nullable
+  @Override
+  public PropertiesProcessor getParametersProcessor() {
+    return new PropertiesProcessor() {
+      @Override
+      public Collection<InvalidProperty> process(Map<String, String> properties) {
+        List<InvalidProperty> res = new ArrayList<InvalidProperty>();
+        if (StringUtil.isEmpty(getTestNamesPatterns(properties))) {
+          res.add(new InvalidProperty(TEST_NAMES_PATTERNS_PARAM, "Test names patterns are not specified"));
+        }
+        if (StringUtil.isEmpty(getMinimumDuration(properties))) {
+          res.add(new InvalidProperty(MIN_DURATION_PARAM, "Minimum duration is not specified"));
+        }
+        if (StringUtil.isEmpty(getThreshold(properties))) {
+          res.add(new InvalidProperty(THRESHOLD_PARAM, "Threshold is not specified"));
+        }
+        return res;
+      }
+    };
+  }
+
+  private String getMinimumDuration(@NotNull  Map<String, String> properties) {
+    return properties.get(MIN_DURATION_PARAM);
+  }
+
+  private String getThreshold(@NotNull Map<String, String> properties) {
+    return properties.get(THRESHOLD_PARAM);
+  }
+
+  private String getTestNamesPatterns(@NotNull Map<String, String> properties) {
+    return properties.get(TEST_NAMES_PATTERNS_PARAM);
+  }
+
+  @NotNull
+  @Override
+  public String describeParameters(@NotNull Map<String, String> params) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("Test names patterns: ").append(getTestNamesPatterns(params)).append("<br>");
+    sb.append("Threshold: ").append(getThreshold(params)).append("%<br>");
+    sb.append("Minimum duration: ").append(getMinimumDuration(params)).append(" ms");
+    return sb.toString();
+  }
+
+  public void checkBuild(@NotNull SRunningBuild build, @NotNull SBuildFeatureDescriptor featureDescriptor) {
     SBuild etalon = getEtalonBuild(build);
     if (etalon == null)
       return;
-    compareTestDurations(getSettings(build), etalon, build);
+    compareTestDurations(getSettings(featureDescriptor), etalon, build);
   }
 
   @Nullable
@@ -136,21 +192,17 @@ public class TestDurationFailureCondition extends BuildFeature {
 
 
   @NotNull
-  private FailureConditionSettings getSettings(@NotNull SRunningBuild build) {
-    ValueResolver resolver = build.getValueResolver();
-    Map<String, String> params = resolver.resolve(map("testNamePattern", "%teamcity.testDurationFailureCondition.testNamePattern%",
-                                                      "threshold", "%teamcity.testDurationFailureCondition.failureThresholdPercents%",
-                                                      "minDuration", "%teamcity.testDurationFailureCondition.minDurationMillis%"));
+  private FailureConditionSettings getSettings(@NotNull SBuildFeatureDescriptor featureDescriptor) {
     int minDuration;
     try {
-      minDuration = Integer.valueOf(params.get("minDuration"));
+      minDuration = Integer.valueOf(getMinimumDuration(featureDescriptor.getParameters()));
     } catch (Exception e) {
       minDuration = 300;
     }
 
     try {
-      return new FailureConditionSettingsImpl(Pattern.compile(params.get("testNamePattern")),
-              Double.valueOf(params.get("threshold")), minDuration);
+      return new FailureConditionSettingsImpl(Pattern.compile(getTestNamesPatterns(featureDescriptor.getParameters())),
+              Double.valueOf(getThreshold(featureDescriptor.getParameters())), minDuration);
     } catch (Exception e) {
       return new EmptyFailureConditionSettings();
     }
