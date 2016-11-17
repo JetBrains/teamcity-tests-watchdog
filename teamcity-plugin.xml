@@ -2,9 +2,9 @@
 <teamcity-plugin xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:shemas-jetbrains-com:teamcity-plugin-v1-xml">
   <info>
     <name>testDuration</name>
-    <display-name>testDuration</display-name>
+    <display-name>Test Duration Analyzer</display-name>
     <version>@Version@</version>
-    <description>Fails a build on test duration increase</description>
+    <description>Provides a build failure condition to fail a build on test duration changes</description>
     <download-url>Plugin download URL</download-url>
     <email>Plugin author e-mail</email>
     <vendor>
