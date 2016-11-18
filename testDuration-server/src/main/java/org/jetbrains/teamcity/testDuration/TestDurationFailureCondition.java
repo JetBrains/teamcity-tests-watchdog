@@ -57,7 +57,7 @@ public class TestDurationFailureCondition extends BuildFeature {
     return new HashMap<String, String>() {{
       put(TEST_NAMES_PATTERNS_PARAM, ".*");
       put(MIN_DURATION_PARAM, "1000");
-      put(THRESHOLD_PARAM, "80");
+      put(THRESHOLD_PARAM, "50");
     }};
   }
 
@@ -99,8 +99,8 @@ public class TestDurationFailureCondition extends BuildFeature {
   public String describeParameters(@NotNull Map<String, String> params) {
     StringBuilder sb = new StringBuilder();
     sb.append("Test names patterns: ").append(StringUtil.escapeHTML(getTestNamesPatterns(params), true)).append("<br>");
-    sb.append("Threshold: ").append(StringUtil.escapeHTML(getThreshold(params), true)).append("%<br>");
-    sb.append("Minimum duration: ").append(StringUtil.escapeHTML(getMinimumDuration(params), true)).append(" ms");
+    sb.append("Minimum duration: ").append(StringUtil.escapeHTML(getMinimumDuration(params), true)).append(" ms<br>");
+    sb.append("Test duration threshold: ").append(StringUtil.escapeHTML(getThreshold(params), true)).append("%");
     return sb.toString();
   }
 
@@ -123,7 +123,10 @@ public class TestDurationFailureCondition extends BuildFeature {
     BuildStatistics etalonStat = etalon.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
     BuildStatistics stat = build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
     List<SFinishedBuild> referenceBuilds = getBuildsBetween(etalon, build);
-    processTests(settings, etalon, etalonStat, build, stat, referenceBuilds);
+
+    if (!referenceBuilds.isEmpty()) {
+      processTests(settings, etalon, etalonStat, build, stat, referenceBuilds);
+    }
   }
 
   private void processTests(@NotNull FailureConditionSettings settings,
@@ -173,15 +176,20 @@ public class TestDurationFailureCondition extends BuildFeature {
 
   @NotNull
   private List<SFinishedBuild> getBuildsBetween(@NotNull SBuild b1, @NotNull SBuild b2) {
-    List<SFinishedBuild> builds = myBuildHistory.getEntriesSince(b1, b1.getBuildType());
+    final SBuildType buildType = b1.getBuildType();
+    if (buildType == null) return Collections.emptyList();
+
+    List<SFinishedBuild> builds = myBuildHistory.getEntriesSince(b1, buildType);
     if (builds.isEmpty())
       return builds;
+
     List<SFinishedBuild> result = new ArrayList<SFinishedBuild>();
     for (SFinishedBuild b : builds) {
       if (b.equals(b2))
         break;
       result.add(b);
     }
+
     Collections.reverse(result);
     return result;
   }
