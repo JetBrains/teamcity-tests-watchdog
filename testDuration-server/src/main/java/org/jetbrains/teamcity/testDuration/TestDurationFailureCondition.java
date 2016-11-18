@@ -7,7 +7,6 @@ import jetbrains.buildServer.messages.BuildMessage1;
 import jetbrains.buildServer.messages.Status;
 import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.artifacts.RevisionRuleBuildFinders;
-import jetbrains.buildServer.tests.TestName;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.web.openapi.PluginDescriptor;
 import org.jetbrains.annotations.NotNull;
@@ -138,9 +137,9 @@ public class TestDurationFailureCondition extends BuildFeature {
       return;
     }
 
-    final FailureConditionSettings settings;
+    final WatchdogSettings settings;
     try {
-      settings = getSettings(featureDescriptor);
+      settings = createSettings(featureDescriptor);
     } catch (Exception e) {
       logWarn(build, "Tests duration watchdog settings are invalid: " + e.getMessage());
       return;
@@ -182,7 +181,7 @@ public class TestDurationFailureCondition extends BuildFeature {
     return RevisionRules.newRevisionRule(ruleName, value);
   }
 
-  private void compareTestDurations(@NotNull FailureConditionSettings settings, @NotNull SBuild etalon, @NotNull SRunningBuild build) {
+  private void compareTestDurations(@NotNull WatchdogSettings settings, @NotNull SBuild etalon, @NotNull SRunningBuild build) {
     List<SFinishedBuild> referenceBuilds = getBuildsBetween(etalon, build);
 
     if (!referenceBuilds.isEmpty()) {
@@ -190,53 +189,13 @@ public class TestDurationFailureCondition extends BuildFeature {
     }
   }
 
-  private void processTests(@NotNull FailureConditionSettings settings,
+  private void processTests(@NotNull WatchdogSettings settings,
                             @NotNull SRunningBuild build,
                             @NotNull List<SFinishedBuild> referenceBuilds) {
-    Map<SFinishedBuild, Map<Long, STestRun>> referencedBuildsStatistics = prepareBuildsStatistics(referenceBuilds);
-    BuildStatistics currentBuildStat = build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
-
-    Set<Long> processedTests = new HashSet<Long>();
-    for (STestRun run : currentBuildStat.getPassedTests()) {
-      TestName testName = run.getTest().getName();
-      final long testNameId = run.getTest().getTestNameId();
-      if (!processedTests.add(testNameId))
-        continue;
-
-      if (!settings.isInteresting(run))
-        continue;
-
-      int duration = run.getDuration();
-      for (SFinishedBuild referenceBuild : referenceBuilds) {
-        Map<Long, STestRun> referenceStat = referencedBuildsStatistics.get(referenceBuild);
-        STestRun referenceTestRun = referenceStat.get(testNameId);
-        if (referenceTestRun == null || referenceTestRun.isIgnored() || referenceTestRun.isMuted()) continue;
-
-        int referenceDuration = referenceTestRun.getDuration();
-        if (settings.isSlow(referenceDuration, duration)) {
-          int slowdown = (int) ((duration - referenceDuration) * 100.0 / Math.max(1, referenceDuration));
-          TestSlowdownInfo info = new TestSlowdownInfo(run.getTestRunId(), duration, referenceTestRun.getTestRunId(), referenceDuration, referenceBuild.getBuildId());
-          build.addBuildProblem(BuildProblemData.createBuildProblem(String.valueOf(testNameId),
-                  PROBLEM_TYPE,
-                  "Test '" + testName.getAsString() + "' became " + slowdown + "% slower",
-                  info.asString()));
-        }
-      }
+    TestsWatchdog watchdog = new TestsWatchdog(settings);
+    for (BuildProblemData bp : watchdog.computeProblems(build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0)).getAllTests(), referenceBuilds)) {
+      build.addBuildProblem(bp);
     }
-  }
-
-  @NotNull
-  private Map<SFinishedBuild, Map<Long, STestRun>> prepareBuildsStatistics(@NotNull List<SFinishedBuild> referenceBuilds) {
-    Map<SFinishedBuild, Map<Long, STestRun>> res = new HashMap<SFinishedBuild, Map<Long, STestRun>>();
-    for (SFinishedBuild build: referenceBuilds) {
-      final BuildStatistics statistics = build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
-      Map<Long, STestRun> testsMap = new HashMap<Long, STestRun>();
-      for (STestRun tr: statistics.getAllTests()) {
-        testsMap.put(tr.getTest().getTestNameId(), tr);
-      }
-      res.put(build, testsMap);
-    }
-    return res;
   }
 
 
@@ -262,7 +221,7 @@ public class TestDurationFailureCondition extends BuildFeature {
 
 
   @NotNull
-  private FailureConditionSettings getSettings(@NotNull SBuildFeatureDescriptor featureDescriptor) throws Exception {
+  private WatchdogSettings createSettings(@NotNull SBuildFeatureDescriptor featureDescriptor) throws Exception {
     final String minDurationParam = getMinimumDuration(featureDescriptor.getParameters());
 
     int minDuration;
@@ -292,50 +251,6 @@ public class TestDurationFailureCondition extends BuildFeature {
       throw new Exception("Invalid test duration threshold: " + thresholdParam + ", error: " + e.getMessage());
     }
 
-    return new FailureConditionSettingsImpl(patterns, threshold, minDuration);
-  }
-
-
-  interface FailureConditionSettings {
-    boolean isInteresting(@NotNull STestRun testRun);
-    boolean isSlow(int etalonDuration, int duration);
-  }
-
-
-  private class FailureConditionSettingsImpl implements FailureConditionSettings {
-    private final double myFailureThreshold;
-    private final int myMinDuration;
-    private final List<Pattern> myTestNamePatterns;
-
-    private FailureConditionSettingsImpl(@NotNull List<Pattern> testNamePatterns, double failureThreshold, int minDuration) {
-      myTestNamePatterns = testNamePatterns;
-      myFailureThreshold = failureThreshold;
-      myMinDuration = minDuration;
-    }
-
-    public boolean isInteresting(@NotNull STestRun testRun) {
-      if (testRun.getDuration() < myMinDuration) return false;
-
-      final String testName = testRun.getTest().getName().getAsString();
-
-      for (Pattern p: myTestNamePatterns) {
-        if (p.matcher(testName).matches()) return true;
-      }
-
-      return false;
-    }
-
-    public boolean isSlow(int etalonDuration, int duration) {
-      return (duration - etalonDuration) * 100.0 / etalonDuration > myFailureThreshold;
-    }
-  }
-
-  private class EmptyFailureConditionSettings implements FailureConditionSettings {
-    public boolean isInteresting(@NotNull STestRun testRun) {
-      return false;
-    }
-    public boolean isSlow(int etalonDuration, int duration) {
-      return false;
-    }
+    return new WatchdogSettings(patterns, threshold, minDuration);
   }
 }
