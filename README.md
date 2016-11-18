@@ -1,13 +1,13 @@
 #TeamCity Tests Duration Watchdog
 [![plugin status]( 
-http://teamcity.jetbrains.com/app/rest/builds/buildType:TeamCityPluginsByJetBrains_TestDuration_Build,pinned:true/statusIcon)](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TestDuration_Build&buildId=lastPinned)
+http://teamcity.jetbrains.com/app/rest/builds/buildType:TeamCityPluginsByJetBrains_TestsWatchdog_Build,pinned:true/statusIcon)](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TestsWatchdog_Build&buildId=lastPinned)
 
 This plugin provides a build failure condition to fail a build if tests duration increases more than specified percent.
 
 Plugin is compatible with TeamCity 9.x or later.
 
 #Download
-[TeamCity 9.x or later](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TestDuration_Build&buildId=lastPinned&tab=artifacts)
+[TeamCity 9.x or later](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TestsWatchdog_Build&buildId=lastPinned&tab=artifacts)
 
 #License
 
