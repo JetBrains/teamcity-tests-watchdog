@@ -134,11 +134,23 @@ public class TestDurationFailureCondition extends BuildFeature {
   public void checkBuild(@NotNull SRunningBuild build, @NotNull SBuildFeatureDescriptor featureDescriptor) {
     SBuild etalon = getEtalonBuild(build, featureDescriptor);
     if (etalon == null) {
-      build.getBuildLog().message("Tests duration watchdog could not find a build to compare test durations with", Status.WARNING, new Date(), null, BuildMessage1.DEFAULT_FLOW_ID, Collections.<String>emptyList());
+      logWarn(build, "Tests duration watchdog could not find a build to compare test durations with");
       return;
     }
 
-    compareTestDurations(getSettings(featureDescriptor), etalon, build);
+    final FailureConditionSettings settings;
+    try {
+      settings = getSettings(featureDescriptor);
+    } catch (Exception e) {
+      logWarn(build, "Tests duration watchdog settings are invalid: " + e.getMessage());
+      return;
+    }
+
+    compareTestDurations(settings, etalon, build);
+  }
+
+  private void logWarn(@NotNull SRunningBuild build, @NotNull String message) {
+    build.getBuildLog().message(message, Status.WARNING, new Date(), null, BuildMessage1.DEFAULT_FLOW_ID, Collections.<String>emptyList());
   }
 
   @Nullable
@@ -245,20 +257,37 @@ public class TestDurationFailureCondition extends BuildFeature {
 
 
   @NotNull
-  private FailureConditionSettings getSettings(@NotNull SBuildFeatureDescriptor featureDescriptor) {
+  private FailureConditionSettings getSettings(@NotNull SBuildFeatureDescriptor featureDescriptor) throws Exception {
+    final String minDurationParam = getMinimumDuration(featureDescriptor.getParameters());
+
     int minDuration;
     try {
-      minDuration = Integer.valueOf(getMinimumDuration(featureDescriptor.getParameters()));
+      minDuration = Integer.valueOf(minDurationParam);
     } catch (Exception e) {
-      minDuration = 300;
+      throw new Exception("Invalid minimum duration value: " + minDurationParam + ", error: " + e.getMessage());
     }
 
+    final String testNamesPatterns = getTestNamesPatterns(featureDescriptor.getParameters());
+
+    List<Pattern> patterns;
     try {
-      return new FailureConditionSettingsImpl(Pattern.compile(getTestNamesPatterns(featureDescriptor.getParameters())),
-              Double.valueOf(getThreshold(featureDescriptor.getParameters())), minDuration);
+      patterns = new ArrayList<Pattern>();
+      for (String p: StringUtil.splitByLines(testNamesPatterns)) {
+        patterns.add(Pattern.compile(p));
+      }
     } catch (Exception e) {
-      return new EmptyFailureConditionSettings();
+      throw new Exception("Invalid test names pattern: " + testNamesPatterns + ", error: " + e.getMessage());
     }
+
+    final String thresholdParam = getThreshold(featureDescriptor.getParameters());
+    final Double threshold;
+    try {
+      threshold = Double.valueOf(thresholdParam);
+    } catch (Exception e) {
+      throw new Exception("Invalid test duration threshold: " + thresholdParam + ", error: " + e.getMessage());
+    }
+
+    return new FailureConditionSettingsImpl(patterns, threshold, minDuration);
   }
 
 
@@ -269,19 +298,26 @@ public class TestDurationFailureCondition extends BuildFeature {
 
 
   private class FailureConditionSettingsImpl implements FailureConditionSettings {
-    private final Pattern myTestNamePattern;
     private final double myFailureThreshold;
     private final int myMinDuration;
+    private final List<Pattern> myTestNamePatterns;
 
-    private FailureConditionSettingsImpl(@NotNull Pattern testNamePattern, double failureThreshold, int minDuration) {
-      myTestNamePattern = testNamePattern;
+    private FailureConditionSettingsImpl(@NotNull List<Pattern> testNamePatterns, double failureThreshold, int minDuration) {
+      myTestNamePatterns = testNamePatterns;
       myFailureThreshold = failureThreshold;
       myMinDuration = minDuration;
     }
 
     public boolean isInteresting(@NotNull STestRun testRun) {
-      return testRun.getDuration() >= myMinDuration &&
-             myTestNamePattern.matcher(testRun.getTest().getName().getAsString()).matches();
+      if (testRun.getDuration() < myMinDuration) return false;
+
+      final String testName = testRun.getTest().getName().getAsString();
+
+      for (Pattern p: myTestNamePatterns) {
+        if (p.matcher(testName).matches()) return true;
+      }
+
+      return false;
     }
 
     public boolean isSlow(int etalonDuration, int duration) {
