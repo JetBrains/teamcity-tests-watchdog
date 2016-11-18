@@ -15,7 +15,7 @@
 </c:set>
 <div class="tcRow">
   <div class="tcCell" style="padding-left: 1em;">
-    current duration: ${testSlowdownInfo.currentDuration}ms, duration in reference build (${refBuildInfo}): ${testSlowdownInfo.etalonDuration}ms
+    current duration: <bs:millis value="${testSlowdownInfo.currentDuration}"/>, duration in reference build (${refBuildInfo}): <bs:millis value="${testSlowdownInfo.etalonDuration}"/>
     <c:if test="${not empty slowTest}"><tt:testDetailsLink testBean="${slowTest}"></tt:testDetailsLink></c:if>
   </div>
   <div class="clear"></div>
