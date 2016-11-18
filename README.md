@@ -1,4 +1,4 @@
-#Teamcity Test Duration Analyzer Plugin 
+#Teamcity Tests Duration Watchdog
 [![plugin status]( 
 http://teamcity.jetbrains.com/app/rest/builds/buildType:TeamCityPluginsByJetBrains_TestDuration_Build,pinned:true/statusIcon)](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TestDuration_Build&buildId=lastPinned)
 
