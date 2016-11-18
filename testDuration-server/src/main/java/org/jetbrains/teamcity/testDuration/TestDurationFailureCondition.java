@@ -132,21 +132,19 @@ public class TestDurationFailureCondition extends BuildFeature {
                             @NotNull SRunningBuild build,
                             @NotNull BuildStatistics buildStat,
                             @NotNull List<SFinishedBuild> referenceBuilds) {
-    Set<String> processedTests = new HashSet<String>();
+    Set<Long> processedTests = new HashSet<Long>();
     for (STestRun run : buildStat.getPassedTests()) {
       TestName testName = run.getTest().getName();
-      String name = testName.getAsString();
-      if (!settings.isInteresting(name))
+      if (!settings.isInteresting(run))
         continue;
 
-      if (!processedTests.add(name))
+      if (!processedTests.add(run.getTest().getTestNameId()))
         continue;
 
       int duration = run.getDuration();
       for (SFinishedBuild referenceBuild : referenceBuilds) {
         BuildStatistics referenceStat = getBuildStat(referenceBuild, etalon, etalonStat);
         List<STestRun> referenceTestRuns = referenceStat.findTestsBy(testName);
-        boolean failFound = false;
         for (STestRun referenceRun : referenceTestRuns) {
           if (referenceRun.isIgnored() || referenceRun.isMuted())
             continue;
@@ -156,12 +154,10 @@ public class TestDurationFailureCondition extends BuildFeature {
             TestSlowdownInfo info = new TestSlowdownInfo(run.getTestRunId(), duration, referenceRun.getTestRunId(), referenceDuration, referenceBuild.getBuildId());
             build.addBuildProblem(BuildProblemData.createBuildProblem("testDurationFailureCondition." + run.getTestRunId(),
                     PROBLEM_TYPE,
-                    "Test test '" + name + "' became " + slowdown + "% slower",
+                    "Test test '" + testName.getAsString() + "' became " + slowdown + "% slower",
                     info.asString()));
           }
         }
-        if (failFound)
-          break;
       }
     }
   }
@@ -210,7 +206,7 @@ public class TestDurationFailureCondition extends BuildFeature {
 
 
   interface FailureConditionSettings {
-    boolean isInteresting(@NotNull String testName);
+    boolean isInteresting(@NotNull STestRun testRun);
     boolean isSlow(int etalonDuration, int duration);
   }
 
@@ -219,25 +215,25 @@ public class TestDurationFailureCondition extends BuildFeature {
     private final Pattern myTestNamePattern;
     private final double myFailureThreshold;
     private final int myMinDuration;
+
     private FailureConditionSettingsImpl(@NotNull Pattern testNamePattern, double failureThreshold, int minDuration) {
       myTestNamePattern = testNamePattern;
       myFailureThreshold = failureThreshold;
       myMinDuration = minDuration;
     }
 
-    public boolean isInteresting(@NotNull String testName) {
-      return myTestNamePattern.matcher(testName).matches();
+    public boolean isInteresting(@NotNull STestRun testRun) {
+      return testRun.getDuration() >= myMinDuration &&
+             myTestNamePattern.matcher(testRun.getTest().getName().getAsString()).matches();
     }
 
     public boolean isSlow(int etalonDuration, int duration) {
-      if (duration < myMinDuration)
-        return false;
       return (duration - etalonDuration) * 100.0 / etalonDuration > myFailureThreshold;
     }
   }
 
   private class EmptyFailureConditionSettings implements FailureConditionSettings {
-    public boolean isInteresting(@NotNull String testName) {
+    public boolean isInteresting(@NotNull STestRun testRun) {
       return false;
     }
     public boolean isSlow(int etalonDuration, int duration) {
