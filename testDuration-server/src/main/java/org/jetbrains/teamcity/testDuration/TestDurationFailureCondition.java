@@ -193,7 +193,7 @@ public class TestDurationFailureCondition extends BuildFeature {
   private void processTests(@NotNull FailureConditionSettings settings,
                             @NotNull SRunningBuild build,
                             @NotNull List<SFinishedBuild> referenceBuilds) {
-    Map<SFinishedBuild, BuildStatistics> referencedBuildsStatistics = prepareBuildsStatistics(referenceBuilds);
+    Map<SFinishedBuild, Map<Long, STestRun>> referencedBuildsStatistics = prepareBuildsStatistics(referenceBuilds);
     BuildStatistics currentBuildStat = build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
 
     Set<Long> processedTests = new HashSet<Long>();
@@ -208,8 +208,8 @@ public class TestDurationFailureCondition extends BuildFeature {
 
       int duration = run.getDuration();
       for (SFinishedBuild referenceBuild : referenceBuilds) {
-        BuildStatistics referenceStat = referencedBuildsStatistics.get(referenceBuild);
-        STestRun referenceTestRun = referenceStat.findTestByTestNameId(testNameId);
+        Map<Long, STestRun> referenceStat = referencedBuildsStatistics.get(referenceBuild);
+        STestRun referenceTestRun = referenceStat.get(testNameId);
         if (referenceTestRun == null || referenceTestRun.isIgnored() || referenceTestRun.isMuted()) continue;
 
         int referenceDuration = referenceTestRun.getDuration();
@@ -226,10 +226,15 @@ public class TestDurationFailureCondition extends BuildFeature {
   }
 
   @NotNull
-  private Map<SFinishedBuild, BuildStatistics> prepareBuildsStatistics(@NotNull List<SFinishedBuild> referenceBuilds) {
-    Map<SFinishedBuild, BuildStatistics> res = new HashMap<SFinishedBuild, BuildStatistics>();
+  private Map<SFinishedBuild, Map<Long, STestRun>> prepareBuildsStatistics(@NotNull List<SFinishedBuild> referenceBuilds) {
+    Map<SFinishedBuild, Map<Long, STestRun>> res = new HashMap<SFinishedBuild, Map<Long, STestRun>>();
     for (SFinishedBuild build: referenceBuilds) {
-      res.put(build, build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0)));
+      final BuildStatistics statistics = build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
+      Map<Long, STestRun> testsMap = new HashMap<Long, STestRun>();
+      for (STestRun tr: statistics.getAllTests()) {
+        testsMap.put(tr.getTest().getTestNameId(), tr);
+      }
+      res.put(build, testsMap);
     }
     return res;
   }
