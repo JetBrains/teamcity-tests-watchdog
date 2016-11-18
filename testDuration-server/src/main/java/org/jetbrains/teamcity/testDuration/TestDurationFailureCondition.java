@@ -120,23 +120,21 @@ public class TestDurationFailureCondition extends BuildFeature {
   }
 
   private void compareTestDurations(@NotNull FailureConditionSettings settings, @NotNull SBuild etalon, @NotNull SRunningBuild build) {
-    BuildStatistics etalonStat = etalon.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
-    BuildStatistics stat = build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
     List<SFinishedBuild> referenceBuilds = getBuildsBetween(etalon, build);
 
     if (!referenceBuilds.isEmpty()) {
-      processTests(settings, etalon, etalonStat, build, stat, referenceBuilds);
+      processTests(settings, build, referenceBuilds);
     }
   }
 
   private void processTests(@NotNull FailureConditionSettings settings,
-                            @NotNull SBuild etalon,
-                            @NotNull BuildStatistics etalonStat,
                             @NotNull SRunningBuild build,
-                            @NotNull BuildStatistics buildStat,
                             @NotNull List<SFinishedBuild> referenceBuilds) {
+    Map<SFinishedBuild, BuildStatistics> referencedBuildsStatistics = prepareBuildsStatistics(referenceBuilds);
+    BuildStatistics currentBuildStat = build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
+
     Set<Long> processedTests = new HashSet<Long>();
-    for (STestRun run : buildStat.getPassedTests()) {
+    for (STestRun run : currentBuildStat.getPassedTests()) {
       TestName testName = run.getTest().getName();
       final long testNameId = run.getTest().getTestNameId();
       if (!settings.isInteresting(run))
@@ -147,7 +145,7 @@ public class TestDurationFailureCondition extends BuildFeature {
 
       int duration = run.getDuration();
       for (SFinishedBuild referenceBuild : referenceBuilds) {
-        BuildStatistics referenceStat = getBuildStat(referenceBuild, etalon, etalonStat);
+        BuildStatistics referenceStat = referencedBuildsStatistics.get(referenceBuild);
         STestRun referenceTestRun = referenceStat.findTestByTestNameId(testNameId);
         if (referenceTestRun == null || referenceTestRun.isIgnored() || referenceTestRun.isMuted()) continue;
 
@@ -164,12 +162,13 @@ public class TestDurationFailureCondition extends BuildFeature {
     }
   }
 
-
   @NotNull
-  private BuildStatistics getBuildStat(@NotNull SBuild build, @NotNull SBuild etalonBuild, @NotNull BuildStatistics etalonStat) {
-    if (build.equals(etalonBuild))
-      return etalonStat;
-    return build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
+  private Map<SFinishedBuild, BuildStatistics> prepareBuildsStatistics(@NotNull List<SFinishedBuild> referenceBuilds) {
+    Map<SFinishedBuild, BuildStatistics> res = new HashMap<SFinishedBuild, BuildStatistics>();
+    for (SFinishedBuild build: referenceBuilds) {
+      res.put(build, build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0)));
+    }
+    return res;
   }
 
 
