@@ -12,18 +12,18 @@
     </td>
 </tr>
 <tr>
-    <th><label for="threshold">Threshold: <l:star/></label></th>
-    <td>
-        <props:textProperty name="threshold" className="longField"/> %
-        <span class="smallNote">Fail build only if test duration increases by more than the specified threshold</span>
-        <span class="error" id="error_threshold"></span>
-    </td>
-</tr>
-<tr>
     <th><label for="minDuration">Minimum duration: <l:star/></label></th>
     <td>
         <props:textProperty name="minDuration" className="longField"/> ms
         <span class="smallNote">Ignore tests with duration smaller than the specified minimum</span>
         <span class="error" id="error_minDuration"></span>
+    </td>
+</tr>
+<tr>
+    <th><label for="threshold">Test duration threshold: <l:star/></label></th>
+    <td>
+        <props:textProperty name="threshold" className="longField"/> %
+        <span class="smallNote">Fail build only if test duration increases by more than the specified threshold</span>
+        <span class="error" id="error_threshold"></span>
     </td>
 </tr>
