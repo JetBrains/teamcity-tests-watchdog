@@ -3,5 +3,6 @@
 <beans default-autowire="constructor">
   <bean class="org.jetbrains.teamcity.testDuration.TestDurationFailureCondition"/>
   <bean class="org.jetbrains.teamcity.testDuration.FinishBuildListener"/>
-  <bean class="org.jetbrains.teamcity.testDuration.TestSlowdownRenderer"/>
+  <bean class="org.jetbrains.teamcity.testDuration.BuildProblemRenderer"/>
+  <bean class="org.jetbrains.teamcity.testDuration.TestsWatchdogBuildProblemTypeDetails"/>
 </beans>

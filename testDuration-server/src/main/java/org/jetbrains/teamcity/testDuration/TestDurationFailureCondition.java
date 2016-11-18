@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 public class TestDurationFailureCondition extends BuildFeature {
 
   public static final String TYPE = "TestDurationWatchdog";
-  public static final String PROBLEM_TYPE = "testDurationFailureCondition";
+  public static final String PROBLEM_TYPE = "TestDurationWatchdogProblem";
   public static final String TEST_NAMES_PATTERNS_PARAM = "testNamesPatterns";
   public static final String MIN_DURATION_PARAM = "minDuration";
   public static final String THRESHOLD_PARAM = "threshold";
@@ -204,9 +204,9 @@ public class TestDurationFailureCondition extends BuildFeature {
         if (settings.isSlow(referenceDuration, duration)) {
           int slowdown = (int) ((duration - referenceDuration) * 100.0 / referenceDuration);
           TestSlowdownInfo info = new TestSlowdownInfo(run.getTestRunId(), duration, referenceTestRun.getTestRunId(), referenceDuration, referenceBuild.getBuildId());
-          build.addBuildProblem(BuildProblemData.createBuildProblem("testDurationFailureCondition." + run.getTestRunId(),
+          build.addBuildProblem(BuildProblemData.createBuildProblem(String.valueOf(testNameId),
                   PROBLEM_TYPE,
-                  "Test test '" + testName.getAsString() + "' became " + slowdown + "% slower",
+                  "Test '" + testName.getAsString() + "' became " + slowdown + "% slower",
                   info.asString()));
         }
       }
