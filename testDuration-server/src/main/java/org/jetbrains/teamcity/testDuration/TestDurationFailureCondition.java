@@ -138,28 +138,27 @@ public class TestDurationFailureCondition extends BuildFeature {
     Set<Long> processedTests = new HashSet<Long>();
     for (STestRun run : buildStat.getPassedTests()) {
       TestName testName = run.getTest().getName();
+      final long testNameId = run.getTest().getTestNameId();
       if (!settings.isInteresting(run))
         continue;
 
-      if (!processedTests.add(run.getTest().getTestNameId()))
+      if (!processedTests.add(testNameId))
         continue;
 
       int duration = run.getDuration();
       for (SFinishedBuild referenceBuild : referenceBuilds) {
         BuildStatistics referenceStat = getBuildStat(referenceBuild, etalon, etalonStat);
-        List<STestRun> referenceTestRuns = referenceStat.findTestsBy(testName);
-        for (STestRun referenceRun : referenceTestRuns) {
-          if (referenceRun.isIgnored() || referenceRun.isMuted())
-            continue;
-          int referenceDuration = referenceRun.getDuration();
-          if (settings.isSlow(referenceDuration, duration)) {
-            int slowdown = (int) ((duration - referenceDuration) * 100.0 / referenceDuration);
-            TestSlowdownInfo info = new TestSlowdownInfo(run.getTestRunId(), duration, referenceRun.getTestRunId(), referenceDuration, referenceBuild.getBuildId());
-            build.addBuildProblem(BuildProblemData.createBuildProblem("testDurationFailureCondition." + run.getTestRunId(),
-                    PROBLEM_TYPE,
-                    "Test test '" + testName.getAsString() + "' became " + slowdown + "% slower",
-                    info.asString()));
-          }
+        STestRun referenceTestRun = referenceStat.findTestByTestNameId(testNameId);
+        if (referenceTestRun == null || referenceTestRun.isIgnored() || referenceTestRun.isMuted()) continue;
+
+        int referenceDuration = referenceTestRun.getDuration();
+        if (settings.isSlow(referenceDuration, duration)) {
+          int slowdown = (int) ((duration - referenceDuration) * 100.0 / referenceDuration);
+          TestSlowdownInfo info = new TestSlowdownInfo(run.getTestRunId(), duration, referenceTestRun.getTestRunId(), referenceDuration, referenceBuild.getBuildId());
+          build.addBuildProblem(BuildProblemData.createBuildProblem("testDurationFailureCondition." + run.getTestRunId(),
+                  PROBLEM_TYPE,
+                  "Test test '" + testName.getAsString() + "' became " + slowdown + "% slower",
+                  info.asString()));
         }
       }
     }
