@@ -1,6 +1,7 @@
 package org.jetbrains.teamcity.testDuration;
 
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.util.TimePrinter;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -33,6 +34,10 @@ public class TestSlowdownInfo {
     return myCurrentDuration;
   }
 
+  public String getCurrentDurationStr() {
+    return TimePrinter.createMillisecondsFormatter().formatTime(myCurrentDuration);
+  }
+
   public int getEtalonTestRunId() {
     return myEtalonTestRunId;
   }
@@ -43,6 +48,10 @@ public class TestSlowdownInfo {
 
   public int getEtalonDuration() {
     return myEtalonDuration;
+  }
+
+  public String getEtalonDurationStr() {
+    return TimePrinter.createMillisecondsFormatter().formatTime(myEtalonDuration);
   }
 
   @NotNull
