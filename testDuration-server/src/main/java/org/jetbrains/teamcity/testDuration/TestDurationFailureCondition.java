@@ -1,10 +1,14 @@
 package org.jetbrains.teamcity.testDuration;
 
 import jetbrains.buildServer.BuildProblemData;
+import jetbrains.buildServer.artifacts.RevisionRule;
+import jetbrains.buildServer.artifacts.RevisionRules;
+import jetbrains.buildServer.messages.BuildMessage1;
+import jetbrains.buildServer.messages.Status;
 import jetbrains.buildServer.serverSide.*;
+import jetbrains.buildServer.serverSide.artifacts.RevisionRuleBuildFinders;
 import jetbrains.buildServer.tests.TestName;
 import jetbrains.buildServer.util.StringUtil;
-import jetbrains.buildServer.vcs.SelectPrevBuildPolicy;
 import jetbrains.buildServer.web.openapi.PluginDescriptor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,18 +18,23 @@ import java.util.regex.Pattern;
 
 public class TestDurationFailureCondition extends BuildFeature {
 
-  public static final String TYPE = "BuildFailureOnSlowTest";
+  public static final String TYPE = "TestDurationWatchdog";
   public static final String PROBLEM_TYPE = "testDurationFailureCondition";
   public static final String TEST_NAMES_PATTERNS_PARAM = "testNamesPatterns";
   public static final String MIN_DURATION_PARAM = "minDuration";
   public static final String THRESHOLD_PARAM = "threshold";
+  public static final String ETALON_BUILD_PARAM = "etalonBuild";
+  public static final String ETALON_BUILD_NUMBER_PARAM = "etalonBuildNumber";
+  public static final String ETALON_BUILD_TAG_PARAM = "etalonBuildTag";
 
   private final BuildHistory myBuildHistory;
   private final PluginDescriptor myPluginDescriptor;
+  private final RevisionRuleBuildFinders myBuildFinder;
 
-  public TestDurationFailureCondition(@NotNull BuildHistory buildHistory, @NotNull PluginDescriptor pluginDescriptor) {
+  public TestDurationFailureCondition(@NotNull BuildHistory buildHistory, @NotNull PluginDescriptor pluginDescriptor, @NotNull RevisionRuleBuildFinders buildFinder) {
     myBuildHistory = buildHistory;
     myPluginDescriptor = pluginDescriptor;
+    myBuildFinder = buildFinder;
   }
 
   @NotNull
@@ -94,29 +103,71 @@ public class TestDurationFailureCondition extends BuildFeature {
     return properties.get(TEST_NAMES_PATTERNS_PARAM);
   }
 
+  private String getEtalonBuild(@NotNull Map<String, String> properties) {
+    return properties.get(ETALON_BUILD_PARAM);
+  }
+
+  private String getEtalonBuildNumber(@NotNull Map<String, String> properties) {
+    return properties.get(ETALON_BUILD_NUMBER_PARAM);
+  }
+
+  private String getEtalonBuildTag(@NotNull Map<String, String> properties) {
+    return properties.get(ETALON_BUILD_TAG_PARAM);
+  }
+
   @NotNull
   @Override
   public String describeParameters(@NotNull Map<String, String> params) {
     StringBuilder sb = new StringBuilder();
     sb.append("Test names patterns: ").append(StringUtil.escapeHTML(getTestNamesPatterns(params), true)).append("<br>");
     sb.append("Minimum duration: ").append(StringUtil.escapeHTML(getMinimumDuration(params), true)).append(" ms<br>");
-    sb.append("Test duration threshold: ").append(StringUtil.escapeHTML(getThreshold(params), true)).append("%");
+    sb.append("Test duration threshold: ").append(StringUtil.escapeHTML(getThreshold(params), true)).append("%<br>");
+
+    RevisionRule revRule = createRevisionRule(params);
+    if (revRule != null) {
+      sb.append("Compare to: ").append(StringUtil.escapeHTML(revRule.getDescription(), true));
+    }
+
     return sb.toString();
   }
 
   public void checkBuild(@NotNull SRunningBuild build, @NotNull SBuildFeatureDescriptor featureDescriptor) {
-    SBuild etalon = getEtalonBuild(build);
-    if (etalon == null)
+    SBuild etalon = getEtalonBuild(build, featureDescriptor);
+    if (etalon == null) {
+      build.getBuildLog().message("Tests duration watchdog could not find a build to compare test durations with", Status.WARNING, new Date(), null, BuildMessage1.DEFAULT_FLOW_ID, Collections.<String>emptyList());
       return;
+    }
+
     compareTestDurations(getSettings(featureDescriptor), etalon, build);
   }
 
   @Nullable
-  private SBuild getEtalonBuild(@NotNull SRunningBuild build) {
-    BuildPromotion p = build.getBuildPromotion().getPreviousBuildPromotion(SelectPrevBuildPolicy.SINCE_LAST_SUCCESSFULLY_FINISHED_BUILD);
-    if (p == null)
+  private SBuild getEtalonBuild(@NotNull SRunningBuild build, @NotNull SBuildFeatureDescriptor featureDescriptor) {
+    final RevisionRule revRule = createRevisionRule(featureDescriptor.getParameters());
+    if (revRule == null) {
       return null;
-    return p.getAssociatedBuild();
+    }
+
+    SBuildType bt = build.getBuildType();
+    if (bt == null) return null;
+
+    return myBuildFinder.getFinder(revRule).findBuild(bt, null);
+  }
+
+  @Nullable
+  private RevisionRule createRevisionRule(@NotNull Map<String, String> params) {
+    String value = "";
+    final String ruleName = getEtalonBuild(params);
+    if (ruleName == null) return null;
+
+    if (RevisionRules.BUILD_NUMBER_NAME.equals(ruleName)) {
+      value = getEtalonBuildNumber(params);
+    }
+    else if (RevisionRules.BUILD_TAG_NAME.equals(ruleName)) {
+      value = getEtalonBuildTag(params);
+    }
+
+    return RevisionRules.newRevisionRule(ruleName, value);
   }
 
   private void compareTestDurations(@NotNull FailureConditionSettings settings, @NotNull SBuild etalon, @NotNull SRunningBuild build) {

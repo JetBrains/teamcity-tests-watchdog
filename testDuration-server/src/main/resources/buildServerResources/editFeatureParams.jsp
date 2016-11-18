@@ -27,3 +27,53 @@
         <span class="error" id="error_threshold"></span>
     </td>
 </tr>
+<tr>
+    <th>Compare tests duration to:</th>
+    <td>
+        <div id="anchorBuildSettings">
+          <props:selectProperty name="etalonBuild" enableFilter="true" onchange="BS.TestsDurationWatchdog.updateFieldsVisibility()">
+            <forms:buildAnchorOptions/>
+          </props:selectProperty>
+          <div id="buildNumberField" class="topShift" style="display:none">
+            <label for="etalonBuildNumber">#</label>
+            <props:textProperty name="etalonBuildNumber" size="12" maxlength="100" style="width: 17em"/><bs:help file="Build+Number"/>
+            <span class="error" id="error_etalonBuildNumber"></span>
+          </div>
+
+          <div id="buildTagField" class="topShift" style="display:none">
+            <label for="etalonBuildTag">tag:</label>
+            <props:textProperty name="etalonBuildTag" size="12" maxlength="60" style="width: 17em"/><bs:help file="Build+Tag"/>
+            <span class="error" id="error_etalonBuildTag"></span>
+          </div>
+        </div>
+
+        <script type="text/javascript">
+            BS.TestsDurationWatchdog = {
+                updateFieldsVisibility: function () {
+                    var buildNumberSelected = $('etalonBuild').selectedIndex == 3;
+                    var buildTagSelected = $('etalonBuild').selectedIndex == 4;
+
+                    if (buildNumberSelected) {
+                        $('buildNumberField').show();
+                    } else {
+                        $('buildNumberField').hide();
+                        $('buildNumberField').value = '';
+                    }
+
+
+                    if (buildTagSelected) {
+                        $('buildTagField').show();
+                    } else {
+                        $('buildTagField').hide();
+                        $('buildTagField').value = '';
+                    }
+
+                    BS.VisibilityHandlers.updateVisibility('featureParams');
+                }
+            };
+
+            BS.TestsDurationWatchdog.updateFieldsVisibility();
+        </script>
+
+    </td>
+</tr>
