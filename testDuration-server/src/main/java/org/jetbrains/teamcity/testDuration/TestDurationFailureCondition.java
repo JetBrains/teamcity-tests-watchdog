@@ -214,7 +214,7 @@ public class TestDurationFailureCondition extends BuildFeature {
 
         int referenceDuration = referenceTestRun.getDuration();
         if (settings.isSlow(referenceDuration, duration)) {
-          int slowdown = (int) ((duration - referenceDuration) * 100.0 / referenceDuration);
+          int slowdown = (int) ((duration - referenceDuration) * 100.0 / Math.max(1, referenceDuration));
           TestSlowdownInfo info = new TestSlowdownInfo(run.getTestRunId(), duration, referenceTestRun.getTestRunId(), referenceDuration, referenceBuild.getBuildId());
           build.addBuildProblem(BuildProblemData.createBuildProblem(String.valueOf(testNameId),
                   PROBLEM_TYPE,
