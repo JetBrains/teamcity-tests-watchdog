@@ -98,9 +98,9 @@ public class TestDurationFailureCondition extends BuildFeature {
   @Override
   public String describeParameters(@NotNull Map<String, String> params) {
     StringBuilder sb = new StringBuilder();
-    sb.append("Test names patterns: ").append(getTestNamesPatterns(params)).append("<br>");
-    sb.append("Threshold: ").append(getThreshold(params)).append("%<br>");
-    sb.append("Minimum duration: ").append(getMinimumDuration(params)).append(" ms");
+    sb.append("Test names patterns: ").append(StringUtil.escapeHTML(getTestNamesPatterns(params), true)).append("<br>");
+    sb.append("Threshold: ").append(StringUtil.escapeHTML(getThreshold(params), true)).append("%<br>");
+    sb.append("Minimum duration: ").append(StringUtil.escapeHTML(getMinimumDuration(params), true)).append(" ms");
     return sb.toString();
   }
 
