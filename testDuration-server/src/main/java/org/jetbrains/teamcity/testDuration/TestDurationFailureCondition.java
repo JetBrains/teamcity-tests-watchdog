@@ -137,10 +137,10 @@ public class TestDurationFailureCondition extends BuildFeature {
     for (STestRun run : currentBuildStat.getPassedTests()) {
       TestName testName = run.getTest().getName();
       final long testNameId = run.getTest().getTestNameId();
-      if (!settings.isInteresting(run))
+      if (!processedTests.add(testNameId))
         continue;
 
-      if (!processedTests.add(testNameId))
+      if (!settings.isInteresting(run))
         continue;
 
       int duration = run.getDuration();
