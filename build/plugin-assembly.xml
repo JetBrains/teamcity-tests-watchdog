@@ -15,7 +15,7 @@
     <moduleSet>
        <useAllReactorProjects>true</useAllReactorProjects>
        <includes>
-           <include>testDuration:testDuration-server</include>
+           <include>teamcity-tests-watchdog:testDuration-server</include>
        </includes> 
        <binaries>
            <outputDirectory>server</outputDirectory>
