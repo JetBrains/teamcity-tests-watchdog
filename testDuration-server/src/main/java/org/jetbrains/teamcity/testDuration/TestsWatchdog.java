@@ -12,6 +12,7 @@ import java.util.*;
 
 public class TestsWatchdog {
   private final WatchdogSettings mySettings;
+  private Map<SFinishedBuild, Map<Long, STestRun>> myBuildsStatistics = new HashMap<SFinishedBuild, Map<Long, STestRun>>();
 
   public TestsWatchdog(@NotNull WatchdogSettings settings) {
     mySettings = settings;
@@ -20,7 +21,6 @@ public class TestsWatchdog {
   @NotNull
   public List<BuildProblemData> computeProblems(@NotNull List<STestRun> currentTests, @NotNull List<SFinishedBuild> previousBuilds) {
     List<BuildProblemData> result = new ArrayList<BuildProblemData>();
-    Map<SFinishedBuild, Map<Long, STestRun>> referencedBuildsStatistics = prepareBuildsStatistics(previousBuilds);
 
     Set<Long> processedTests = new HashSet<Long>();
     for (STestRun run : currentTests) {
@@ -34,7 +34,7 @@ public class TestsWatchdog {
 
       int duration = run.getDuration();
       for (SFinishedBuild referenceBuild : previousBuilds) {
-        Map<Long, STestRun> referenceStat = referencedBuildsStatistics.get(referenceBuild);
+        Map<Long, STestRun> referenceStat = getBuildStatistics(referenceBuild);
         STestRun referenceTestRun = referenceStat.get(testNameId);
         if (referenceTestRun == null || referenceTestRun.isIgnored() || referenceTestRun.isMuted()) continue;
 
@@ -46,6 +46,7 @@ public class TestsWatchdog {
               TestDurationFailureCondition.PROBLEM_TYPE,
               "Test '" + testName.getAsString() + "' became " + slowdown + "% slower",
               info.asString()));
+          break;
         }
       }
     }
@@ -54,16 +55,16 @@ public class TestsWatchdog {
   }
 
   @NotNull
-  private Map<SFinishedBuild, Map<Long, STestRun>> prepareBuildsStatistics(@NotNull List<SFinishedBuild> referenceBuilds) {
-    Map<SFinishedBuild, Map<Long, STestRun>> res = new HashMap<SFinishedBuild, Map<Long, STestRun>>();
-    for (SFinishedBuild build: referenceBuilds) {
-      final BuildStatistics statistics = build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
-      Map<Long, STestRun> testsMap = new HashMap<Long, STestRun>();
-      for (STestRun tr: statistics.getAllTests()) {
-        testsMap.put(tr.getTest().getTestNameId(), tr);
-      }
-      res.put(build, testsMap);
+  private Map<Long, STestRun> getBuildStatistics(@NotNull SFinishedBuild build) {
+    Map<Long, STestRun> res = myBuildsStatistics.get(build);
+    if (res != null) return res;
+
+    final BuildStatistics statistics = build.getBuildStatistics(new BuildStatisticsOptions(BuildStatisticsOptions.PASSED_TESTS, 0));
+    Map<Long, STestRun> testsMap = new HashMap<Long, STestRun>();
+    for (STestRun tr: statistics.getAllTests()) {
+      testsMap.put(tr.getTest().getTestNameId(), tr);
     }
-    return res;
+    myBuildsStatistics.put(build, testsMap);
+    return testsMap;
   }
 }
