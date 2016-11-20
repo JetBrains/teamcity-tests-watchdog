@@ -46,8 +46,8 @@ public class TestsWatchdog {
               TestDurationFailureCondition.PROBLEM_TYPE,
               "Test '" + testName.getAsString() + "' became " + slowdown + "% slower",
               info.asString()));
-          break;
         }
+        break;
       }
     }
 
