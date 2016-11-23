@@ -124,7 +124,7 @@ public class TestDurationFailureCondition extends BuildFeature {
 
     RevisionRule revRule = createRevisionRule(params);
     if (revRule != null) {
-      sb.append("Compare to: ").append(StringUtil.escapeHTML(revRule.getDescription(), true));
+      sb.append("Analyze test history from: ").append(StringUtil.escapeHTML(revRule.getDescription(), true));
     }
 
     return sb.toString();

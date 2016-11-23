@@ -28,8 +28,13 @@
     </td>
 </tr>
 <tr>
-    <th>Compare tests duration to:</th>
+    <th><label for="etalonBuild">Analyze test history from:</label></th>
     <td>
+        <style type="text/css">
+            .topShift {
+                padding-top: .5em;
+            }
+        </style>
         <div id="anchorBuildSettings">
           <props:selectProperty name="etalonBuild" enableFilter="true" onchange="BS.TestsDurationWatchdog.updateFieldsVisibility()">
             <forms:buildAnchorOptions/>
@@ -46,6 +51,9 @@
             <span class="error" id="error_etalonBuildTag"></span>
           </div>
         </div>
+        <span class="smallNote">
+            TeamCity will search for test duration regressions starting from the specified build
+        </span>
 
         <script type="text/javascript">
             BS.TestsDurationWatchdog = {
