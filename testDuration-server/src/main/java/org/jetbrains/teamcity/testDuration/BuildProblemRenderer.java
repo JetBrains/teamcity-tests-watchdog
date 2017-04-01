@@ -24,8 +24,8 @@ public class BuildProblemRenderer extends SimplePageExtension {
 
   @Override
   public void fillModel(@NotNull Map<String, Object> model, @NotNull HttpServletRequest request) {
-    SBuild build = (SBuild)model.get("buildData");
     BuildProblem buildProblem = getBuildProblemNotNull(request);
+    SBuild build = buildProblem.getBuildPromotion().getAssociatedBuild();
     String data = buildProblem.getBuildProblemData().getAdditionalData();
     if (data == null || build == null)
       return;
