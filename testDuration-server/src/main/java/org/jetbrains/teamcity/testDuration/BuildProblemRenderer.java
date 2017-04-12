@@ -58,7 +58,9 @@ public class BuildProblemRenderer extends SimplePageExtension {
       String data = problem.getBuildProblemData().getAdditionalData();
       if (data == null)
         return false;
-
+      SBuild build = problem.getBuildPromotion().getAssociatedBuild();
+      if (build == null)
+        return false;
       TestSlowdownInfo.fromString(data);
       return true;
     } catch (IllegalArgumentException e) {
