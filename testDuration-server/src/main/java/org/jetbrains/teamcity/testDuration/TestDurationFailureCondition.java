@@ -118,13 +118,13 @@ public class TestDurationFailureCondition extends BuildFeature {
   @Override
   public String describeParameters(@NotNull Map<String, String> params) {
     StringBuilder sb = new StringBuilder();
-    sb.append("Test names patterns: ").append(StringUtil.escapeHTML(getTestNamesPatterns(params), true)).append("<br>");
-    sb.append("Minimum duration: ").append(StringUtil.escapeHTML(getMinimumDuration(params), true)).append(" ms<br>");
-    sb.append("Test duration threshold: ").append(StringUtil.escapeHTML(getThreshold(params), true)).append("%<br>");
+    sb.append("Test names patterns: ").append(StringUtil.escapeHTML(getTestNamesPatterns(params), true)).append(".");
+    sb.append(" Minimum duration: ").append(StringUtil.escapeHTML(getMinimumDuration(params), true)).append(" ms.");
+    sb.append(" Test duration threshold: ").append(StringUtil.escapeHTML(getThreshold(params), true)).append("%");
 
     RevisionRule revRule = createRevisionRule(params);
     if (revRule != null) {
-      sb.append("Analyze test history from: ").append(StringUtil.escapeHTML(revRule.getDescription(), true));
+      sb.append(" Analyze test history from: ").append(StringUtil.escapeHTML(revRule.getDescription(), true));
     }
 
     return sb.toString();
